@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=no">
+  <title>DOFAMINE MINES — Ziggurat Full Wide Living Edition</title>
+  <style>
+    :root {
+      --bg-panel: rgba(24, 16, 10, 0.96); 
+      --tile-stone: #d35400;    
+      --tile-stone-hover: #ba4a00;
+      --accent-gold: #f1c40f;   
+      --accent-green-glow: rgba(46, 204, 113, 0.45); /* Мягкое изумрудное свечение под новое покачивание */
+      --accent-red: #e74c3c;    
+      --text-muted: #a6acaf;
+      --radius: 6px;
+    }
+
+    /* 🌍 НАМЕРТВО РАСТЯГИВАЕМ ТВОЙ ФОН ЗИККУРАТА НА ВЕСЬ ЭКРАН ТЕЛЕФОНА */
+    body {
+      background: #0b0705 url('bg_ziggurat.png') center top/contain no-repeat fixed;
+      background-color: #0b0705;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+      box-sizing: border-box;
+      overflow: hidden; 
+      position: relative;
+    }
+
+    /* 🍃 КОНТЕЙНЕР ДЛЯ ПАДАЮЩИХ ЛИСТЬЕВ ПОВЕРХ ВСЕГО НА СВЕТЕ */
+    #zigguratLeafParticleContainer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none; 
+      z-index: 99999;       
+      overflow: hidden;
+    }
+
+    .jungle-falling-leaf {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: url('textures/leaf.png') center/contain no-repeat;
+      opacity: 0.85;
+      will-change: transform, top, left;
+    }
+
+    /* 🔴 МИСТИЧЕСКАЯ ВСПЫШКА ПРОКЛЯТИЯ ПРИ ВЗРЫВЕ ЛОВУШКИ */
+    body.explosion-flash {
+      animation: zigguratCurseFlash 0.3s ease-out;
+    }
+    @keyframes zigguratCurseFlash {
+      0%, 100% { filter: brightness(1) saturate(1); }
+      50% { filter: brightness(1.3) saturate(1.8) sepia(0.5) hue-rotate(-40deg); }
+    }
+
+    /* 🎰 АБСОЛЮТНАЯ ВЕРХНЯЯ ЛЕНТА ИКСОВ (НЕ ДВИГАЕТ ПЛИТЫ) */
+    .multiplier-strip-bar {
+      position: absolute;   
+      top: 90px;            /* 🔑 РЕГУЛИРУЙ ВЫСОТУ ЛЕНТЫ ТУТ */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      gap: 6px;
+      padding: 0 16px;
+      box-sizing: border-box;
+      overflow-x: auto;
+      z-index: 200000;      
+    }
+    .multiplier-strip-bar::-webkit-scrollbar { display: none; }
+    .mult-step-box {
+      flex: 1;
+      min-width: 63px;
+      background-color: rgba(13, 8, 5, 0.85);
+      border-bottom: 3px solid #4a2711;
+      border-radius: var(--radius);
+      padding: 6px 0;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      font-family: monospace;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+    }
+    .mult-step-box.active-next {
+      background-color: #3e2714;
+      border-bottom-color: var(--accent-gold);
+      color: #fff;
+      transform: scale(1.04);
+      box-shadow: 0 0 10px rgba(241,196,15,0.4);
+    }
+
+    /* 🪐 ЦЕНТРАЛЬНЫЙ ПОРТАЛ СЕТКИ 4х5 */
+    .ziggurat-graphic-container {
+      flex-grow: 1;
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      position: relative;
+      z-index: 10;
+      padding-top: 130px;      /* 🔑 РЕГУЛИРУЙ ВЫСОТУ ПЛИТ ТУТ: чем больше число, тем они ниже! */
+      padding-bottom: 170px;   
+      box-sizing: border-box;
+    }
+
+    /* 🟥 ОБНОВЛЕННАЯ СЕТКА 4х5 */
+    .stake-mines-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;                 
+      width: 66%;               
+      max-width: 265px;
+    }
+    
+    .stake-mines-grid.shake-grid-effect {
+      animation: shakeMatrixField 0.35s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    @keyframes shakeMatrixField {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(3px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(0, 0, 0); }
+    }
+
+    /* 🧱 ЗАКРЫТАЯ ПЛИТКА (Картинка подгружается динамически через JS) */
+    .mine-tile {
+      aspect-ratio: 1 / 1;
+      background-position: center !important;
+      background-size: cover !important;
+      background-repeat: no-repeat !important;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      transition: filter 0.1s, transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      will-change: transform, filter;
+      animation: idleMicroStoneTremor 4s infinite ease-in-out;
+    }
+    @keyframes idleMicroStoneTremor {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      20% { transform: translate(0.3px, -0.3px) scale(0.99); }
+      40% { transform: translate(-0.3px, 0.2px) scale(1); }
+      60% { transform: translate(0.2px, 0.3px) scale(0.995); }
+      80% { transform: translate(-0.2px, -0.2px) scale(1); }
+    }
+    
+    .mine-tile:hover { filter: brightness(1.22); transform: scale(1.03) !important; animation-play-state: paused; }
+    .mine-tile:active { transform: scale(0.96) !important; }
+    
+    /* 👑 🔑 ИЗМЕНЕННОЕ ПЛАВНОЕ ПОКАЧИВАНИЕ ГЕМА И ИЗУМРУДНАЯ АУРА СВЕЧЕНИЯ */
+    .mine-tile.reveal-gem {
+      background: #2c160a url('textures/ground.png') center/cover no-repeat !important;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.8), 0 0 14px var(--accent-green-glow);
+      
+      /* ⚡ Полностью переписанная анимация: медленный, гипнотический цикл парения 1.8 секунды */
+      animation: continuousStoneVibe 1.8s infinite ease-in-out !important;
+    }
+    @keyframes continuousStoneVibe {
+      0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+      25% { transform: translate(0.8px, -1.2px) rotate(0.4deg) scale(0.985); }
+      50% { transform: translate(-0.6px, 1px) rotate(-0.5deg) scale(1.01); }
+      75% { transform: translate(0.5px, -0.4px) rotate(0.3deg) scale(0.99); }
+    }
+
+    /* 💥 АКТИВАЦИЯ ЛОВУШКИ С ЭФФЕКТОМ ТРЕЩИН КАМНЯ */
+    .mine-tile.reveal-bomb {
+      background: linear-gradient(135deg, #4a0f0f 0%, #c0392b 100%) !important;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.8), 0 0 20px rgba(192,57,43,0.7);
+      animation: stoneFractureCracks 0.2s ease-out forwards !important;
+    }
+    @keyframes stoneFractureCracks {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.92); filter: brightness(1.4); }
+      100% { transform: scale(0.95); }
+    }
+
+    /* 🔥 ЭФФЕКТ ЖИДКОЙ ЛАВЫ: АНИМИРОВАННЫЙ ПЕРЕЛИВАЮЩИЙСЯ ГРАДИЕНТ ДЛЯ КНОПОК */
+    .gradient-fire-lava {
+      background: linear-gradient(-45deg, #d35400, #f39c12, #f1c40f, #e67e22) !important;
+      background-size: 400% 440% !important;
+      animation: lavaFlowGradientEffect 4s ease infinite !important;
+    }
+    @keyframes lavaFlowGradientEffect {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    /* Картинки иконок корон и бомб внутри плит */
+    .tile-img {
+      width: 72%;
+      height: 72%;
+      object-fit: contain;
+      animation: popIn2D 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    @keyframes popIn2D {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ВЫЛЕТАЮЩИЙ ЗОЛОТОЙ ИКС НАД ПЛИТОЙ */
+    .floating-xp-text {
+      position: absolute;
+      top: -12px;
+      font-weight: 900;
+      font-size: 14px;
+      color: #fff;
+      text-shadow: 0 0 6px var(--accent-gold);
+      font-family: monospace;
+      z-index: 30;
+      pointer-events: none;
+      animation: floatUp2D 0.5s ease-out forwards;
+    }
+    @keyframes floatUp2D {
+      0% { transform: translateY(0) scale(0.8); opacity: 1; }
+      100% { transform: translateY(-25px) scale(1); opacity: 0; }
+    }
+
+    /* 🎛️ 🔑 НОВАЯ ПАНЕЛЬ: РАСТЯНУТА ПО БОКАМ ДО 480PX (96% ШИРИНЫ ЭКРАНА) */
+    .stake-control-panel {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 96%;           /* 🔑 Растянули в ширину на мобилке */
+      max-width: 480px;     /* 🔑 Увеличили максимальный предел длины */
+      background-color: var(--bg-panel);
+      backdrop-filter: blur(12px); 
+      border-top: 1px solid rgba(74, 39, 17, 0.4);
+      padding: 12px 18px 24px 18px; 
+      box-sizing: border-box;
+      border-radius: var(--radius) var(--radius) 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+      box-shadow: 0 -10px 30px rgba(0,0,0,0.6);
+    }
+
+    .selector-row-title { font-size: 11px; color: var(--text-muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stake-tabs-row { display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(12, 8, 5, 0.9); padding: 3px; border-radius: 4px; }
+    .tab-btn-item { background: none; border: none; color: var(--text-muted); font-size: 12px; font-weight: bold; padding: 9px 0; cursor: pointer; border-radius: 3px; transition: all 0.1s; }
+    .tab-btn-item.active-blue { background-color: var(--accent-gold); color: #000; font-weight: 900; }
+
+    .stake-bet-box-container { display: flex; align-items: center; background: rgba(12, 8, 5, 0.9); border-radius: 4px; padding: 4px; }
+    .bet-arrow-btn { background: none; border: none; color: var(--text-muted); width: 45px; font-size: 18px; cursor: pointer; }
+    .stake-bet-input { flex-grow: 1; background: none; border: none; color: #fff; text-align: center; font-size: 16px; font-weight: bold; outline: none; font-family: monospace; }
+
+    .btn-stake-bet-action {
+      color: #000;
+      border: none;
+      padding: 14px 0;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.839);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-stake-bet-action:hover { transform: translateY(-1px); box-shadow: 0 4px 25px var(--accent-gold); }
+    .btn-stake-bet-action:disabled { cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <!-- 🍃 ТЕГ КОНТЕЙНЕРА ЧАСТИЦ (ЛИСТЬЕВ) -->
+  <div id="zigguratLeafParticleContainer"></div>
+
+  <!-- 🎰 СВЕРХУ: ИНДИКАТОР ИКСОВ -->
+  <div class="multiplier-strip-bar" id="minesMultiplierStripBar"></div>
+
+  <!-- 🪐 ЦЕНТРАЛЬНЫЙ ПОРТАЛ СЕТКИ 4х5 -->
+  <div class="ziggurat-graphic-container">
+    <div class="stake-mines-grid" id="stakeMinesGridMainBody"></div>
+  </div>
+
+  <!-- 🎛️ НИЖНИЙ ПУЛЬТ УПРАВЛЕНИЯ -->
+  <div class="stake-control-panel">
+    <div style="text-align: center; font-size: 13px; font-weight: 900; color: var(--accent-gold); min-height: 18px; text-transform: uppercase;" id="minesGameStatusInfoLine">АРКА ТАЙН ЗИККУРАТА ОТКРЫТА</div>
+
+    <div>
+      <div class="selector-row-title" style="margin-bottom: 4px;">Количество скрытых ловушек</div>
+      <div class="stake-tabs-row">
+        <button class="tab-btn-item" onclick="selectBombsCount(1, this)">1</button>
+        <button class="tab-btn-item active-blue" onclick="selectBombsCount(3, this)">3</button>
+        <button class="tab-btn-item" onclick="selectBombsCount(5, this)">5</button>
+        <button class="tab-btn-item" onclick="selectBombsCount(7, this)">7</button>
+        <button class="tab-btn-item" onclick="selectBombsCount(10, this)">10</button>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-weight: bold; text-transform: uppercase; padding: 0 4px;">
+      <span id="minesDisplayWalletName">Золотой запас: 100.00 TON</span>
+      <span>Множитель: <span style="color:#fff;" id="currentWinDisplayInfoLabel">0.00x</span></span>
+    </div>
+
+    <div class="stake-bet-box-container">
+      <button class="bet-arrow-btn" onclick="changeBetValue(-10)">▼</button>
+      <input type="number" id="stakeMinesBetInputAmount" class="stake-bet-input" value="10.00" step="10">
+      <button class="bet-arrow-btn" onclick="changeBetValue(10)">▲</button>
+    </div>
+
+    <button class="btn-stake-bet-action gradient-fire-lava" id="btnMinesPrimaryStakeAction" onclick="triggerMinesGameCycle()">Bet</button>
+  </div>
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT ДВИЖОК: РАНДОМ ПЛИТ, ЛИСТЬЯ И СТАРТОВАЯ ЛОГИКА 4х5 (ЧАСТЬ 1) -->
+  <!-- ========================================================================= -->
+  <script>
+    let playerDemoBalance = 100.00; 
+    let betAmount = 10.00;
+    let bombsCount = 3;
+    let isGameActive = false;
+    let openedTilesCount = 0;
+    let isExplodedThisRound = false; // 🔑 Цифровой замок мгновенной блокировки кассы
+    
+    let boardMatrix = []; // 0 - кристалл, 1 - мина
+    let currentMultiplier = 1.00;
+
+    // 🕵️‍♂️ ОПЕРАТИВНАЯ ПАМЯТЬ АНТИ-ПАТТЕРНА
+    let playerLastWinningPattern = [];  
+    let currentRoundClickedTiles = [];  
+
+    // ПЛЕЕР ЭФФЕКТОВ (ЗОЛОТО И БУМ)
+    function playZigguratSound(filename) {
+        try {
+            const audio = new Audio(`sounds/${filename}`);
+            audio.volume = 0.5;
+            audio.play().catch(() => {});
+        } catch(e) {}
+    }
+
+    // 🍃 ЖИВАЯ СИСТЕМА ЛИСТЬЕВ: ПОЛНЫЙ ОХВАТ ЭКРАНА В ПИКСЕЛЯХ + РЕАЛИСТИЧНОЕ ВИЛЯНИЕ ПОВЕРХ ВСЕГО
+    function startDeluxeLeafEngine() {
+        const container = document.getElementById("zigguratLeafParticleContainer");
+        if (!container) return;
+
+        // Цикл: поштучный спавн 1 листа раз в 3 секунды
+        setInterval(() => {
+            if (container.children.length >= 3) return; // Ограничение на количество листьев
+
+            const leaf = document.createElement("div");
+            leaf.className = "jungle-falling-leaf";
+            
+            // Фикс в пикселях: распределяем спавн равномерно по всей ширине окна
+            const screenWidthPx = window.innerWidth;
+            let startLeftPx = Math.random() * (screenWidthPx - 40) + 10;
+            
+            leaf.style.left = startLeftPx + "px";
+            leaf.style.top = "-30px"; 
+            
+            const size = Math.floor(Math.random() * 6) + 12; // Размер 12px - 18px
+            leaf.style.width = size + "px";
+            leaf.style.height = size + "px";
+            
+            const fallSpeed = Math.random() * 0.4 + 0.4; // Супер-медленное падение
+            let rotation = Math.random() * 360;
+            const rotSpeed = Math.random() * 0.8 - 0.4; 
+            
+            let topPos = -30;
+            let waveFrequency = Math.random() * 0.015 + 0.01; // Мягкая частота покачивания
+            let waveAmplitude = Math.random() * 10 + 10;      // Сила виляния со стороны в сторону
+
+            function animateLeaf() {
+                topPos += fallSpeed;
+                rotation += rotSpeed;
+                
+                // Тригонометрия: листок виляет влево-вправо относительно стартовой пиксельной координаты поверх всего
+                let currentLeft = startLeftPx + Math.sin(topPos * waveFrequency) * waveAmplitude;
+
+                leaf.style.top = topPos + "px";
+                leaf.style.left = currentLeft + "px";
+                leaf.style.transform = `rotate(${rotation}deg)`;
+
+                if (topPos > window.innerHeight) {
+                    leaf.remove();
+                } else {
+                    requestAnimationFrame(animateLeaf);
+                }
+            }
+            
+            container.appendChild(leaf);
+            requestAnimationFrame(animateLeaf);
+
+        }, 3000);
+    }
+
+    // 🏺 ИНИЦИАЛИЗАЦИЯ ИГРОВОГО ПОЛЯ С ДИНАМИЧЕСКИМ РАНДОМОМ ТРЕХ ВИДОВ ПЛИТ
+    function initStandaloneGridBoard() {
+        const gridContainer = document.getElementById("stakeMinesGridMainBody");
+        if (!gridContainer) return;
+        gridContainer.innerHTML = "";
+        gridContainer.classList.remove("shake-grid-effect");
+
+        const availablePlates = [
+            'textures/plate.png',
+            'textures/plate2.png'
+        ];
+
+        for (let i = 0; i < 20; i++) {
+            const tile = document.createElement("div");
+            tile.className = "mine-tile";
+            tile.dataset.index = i;
+            
+            const randomPlateIndex = Math.floor(Math.random() * availablePlates.length);
+            tile.style.background = `url('${availablePlates[randomPlateIndex]}') center/cover no-repeat`;
+
+            tile.onclick = () => handleTileClickAction(i, tile);
+            gridContainer.appendChild(tile);
+        }
+        recalculateMultiplierBarStrip();
+        updateScreenBalanceDisplay();
+    }
+
+    function changeBetValue(val) {
+        if (isGameActive) return;
+        betAmount = Math.max(1.00, betAmount + val);
+        document.getElementById("stakeMinesBetInputAmount").value = betAmount.toFixed(2);
+        updateGameStatusInfoLine();
+    }
+
+    function selectBombsCount(count, btnObj) {
+        if (isGameActive) return;
+        bombsCount = count;
+        
+        btnObj.parentNode.querySelectorAll('.tab-btn-item').forEach(b => b.classList.remove('active-blue'));
+        btnObj.classList.add('active-blue');
+        
+        recalculateMultiplierBarStrip();
+        updateGameStatusInfoLine();
+    }
+
+    function recalculateMultiplierBarStrip() {
+        const stripContainer = document.getElementById("minesMultiplierStripBar");
+        if (stripContainer) {
+            stripContainer.innerHTML = "";
+            for (let step = 1; step <= 5; step++) {
+                const currentStepMultiplier = calculateMinesFormulaMultiplier(bombsCount, openedTilesCount + step);
+                const box = document.createElement("div");
+                box.className = "mult-step-box" + (step === 1 && isGameActive ? " active-next" : "");
+                box.innerText = currentStepMultiplier.toFixed(2) + "x";
+                stripContainer.appendChild(box);
+            }
+        }
+    }
+
+    function calculateMinesFormulaMultiplier(bombs, hits) {
+        if (hits <= 0) return 1.00;
+        let totalTiles = 20; 
+        let diamonds = totalTiles - bombs;
+        
+        let multiplier = 1.00;
+        for (let i = 0; i < hits; i++) {
+            multiplier *= (totalTiles - i) / (diamonds - i);
+        }
+        return multiplier * 0.95; 
+    }
+
+    function updateGameStatusInfoLine() {
+        const infoLine = document.getElementById("minesGameStatusInfoLine");
+        if (!isGameActive) {
+            infoLine.style.color = "var(--accent-gold)";
+            infoLine.innerText = "АРКА ТАЙН ЗИККУРАТА ОТКРЫТА";
+        } else {
+            const currentWinTon = betAmount * currentMultiplier;
+            infoLine.style.color = "var(--accent-gold)"; 
+            infoLine.innerText = `ДОБЫЧА: ${currentWinTon.toFixed(2)} TON`;
+        }
+    }
+    // 🔊 ДИНАМИЧЕСКИЙ МУЗЫКАЛЬНЫЙ КОНТРОЛЛЕР СИНХРОНИЗАЦИИ С РАУНДОМ
+    let bgMusicInstance = null;
+
+    function playZigguratBackgroundMusic() {
+        try {
+            if (!bgMusicInstance) {
+                bgMusicInstance = new Audio('sounds/background_music.mp3');
+                bgMusicInstance.volume = 0.25; // Фоновая комфортная громкость
+                bgMusicInstance.loop = true;   // Зацикливаем трек внутри раунда
+            }
+            bgMusicInstance.currentTime = 0; // Сбрасываем трек на самое начало
+            bgMusicInstance.play().catch(() => {});
+        } catch(e) {}
+    }
+
+    function stopZigguratBackgroundMusic() {
+        try {
+            if (bgMusicInstance) {
+                bgMusicInstance.pause();
+                bgMusicInstance.currentTime = 0; // Сбрасываем в ноль, чтоб не продолжался при следующем бете
+            }
+        } catch(e) {}
+    }
+
+    function triggerMinesGameCycle() {
+        const actionBtn = document.getElementById("btnMinesPrimaryStakeAction");
+        betAmount = parseFloat(document.getElementById("stakeMinesBetInputAmount").value) || 10.00;
+
+        if (!isGameActive) {
+            if (playerDemoBalance < betAmount) {
+                const infoLine = document.getElementById("minesGameStatusInfoLine");
+                infoLine.style.color = "var(--accent-red)";
+                infoLine.innerText = "🛑 НЕДОСТАТОЧНО ЗОЛОТА В ЗАПАСЕ!";
+                return;
+            }
+
+            playerDemoBalance -= betAmount;
+            isGameActive = true;
+            isExplodedThisRound = false; 
+            openedTilesCount = 0;
+            currentMultiplier = 1.00;
+            currentRoundClickedTiles = []; 
+            
+            document.getElementById("currentWinDisplayInfoLabel").innerText = "0.00x";
+            
+            actionBtn.innerText = "Cashout";
+            // При активной игре меняем градиент лавы на сочный оранжевый тон
+            actionBtn.className = "btn-stake-bet-action";
+            actionBtn.style.background = "linear-gradient(135deg, #d35400 0%, #e67e22 100%)"; 
+            actionBtn.style.color = "#fff";
+            actionBtn.style.boxShadow = "0 4px 15px rgba(211,84,0,0.4)";
+            actionBtn.disabled = false; 
+
+            // НАЧАЛО РАУНДА: Динамически запускаем фоновую музыку
+            playZigguratBackgroundMusic();
+
+            generateMinesMatrixLogicBoard();
+            recalculateMultiplierBarStrip();
+            updateScreenBalanceDisplay();
+            updateGameStatusInfoLine();
+            lockInputsControlPanel(true);
+        } else {
+            executeCashoutWinAction();
+        }
+    }
+
+    // УМНАЯ ГЕНЕРАЦИЯ ПОД 20 КЛЕТОК С АНТИ-ПАТТЕРН ТРЕКЕРОМ
+    function generateMinesMatrixLogicBoard() {
+        boardMatrix = new Array(20).fill(0); 
+        let plantedBombs = 0;
+
+        if (playerLastWinningPattern.length > 0) {
+            playerLastWinningPattern.forEach(tileIndex => {
+                if (tileIndex < 20 && plantedBombs < bombsCount && boardMatrix[tileIndex] === 0) {
+                    boardMatrix[tileIndex] = 1; 
+                    plantedBombs++;
+                }
+            });
+        }
+
+        while (plantedBombs < bombsCount) {
+            let randomIndex = Math.floor(Math.random() * 20); 
+            if (boardMatrix[randomIndex] === 0) {
+                boardMatrix[randomIndex] = 1;
+                plantedBombs++;
+            }
+        }
+    }
+
+    // ОБРАБОТЧИК КЛИКА С ЦИФРОВЫМ ЗАМКОМ И СИНХРОННЫМ БЛОК КАССЫ
+    function handleTileClickAction(index, tileObj) {
+        if (!isGameActive || isExplodedThisRound || tileObj.classList.contains("reveal-gem") || tileObj.classList.contains("reveal-bomb")) return;
+
+        currentRoundClickedTiles.push(index);
+
+        if (bombsCount >= 5 && openedTilesCount >= 1) {
+            if (Math.random() < 0.88) {
+                boardMatrix[index] = 1; 
+            }
+        }
+
+        if (window.parent && window.parent.currentPlayer && window.parent.currentPlayer.cheat_mode === 'must_lose') {
+            boardMatrix[index] = 1;
+        }
+
+        if (boardMatrix[index] === 1) {
+            // 💥 БУМ! СИНХРОННЫЙ БЛОК КАССЫ ЗА 0 НАНОСЕКУНД
+            isExplodedThisRound = true;
+            isGameActive = false;
+            playerLastWinningPattern = [];
+
+            // КОНЕЦ РАУНДА (ПРОИГРЫШ): Стопаем музыку раунда и взрываем ловушку
+            stopZigguratBackgroundMusic();
+            playZigguratSound('curse_boom.mp3');
+
+            const actionBtn = document.getElementById("btnMinesPrimaryStakeAction");
+            actionBtn.innerText = "Ловушка...";
+            actionBtn.className = "btn-stake-bet-action";
+            actionBtn.style.background = "#2c1e19"; 
+            actionBtn.style.color = "var(--text-muted)";
+            actionBtn.style.boxShadow = "none";
+            actionBtn.disabled = true; 
+
+            tileObj.classList.add("reveal-bomb");
+            tileObj.innerHTML = `<img src="textures/mine.png" class="tile-img" onerror="this.replaceWith('💣')">`;
+            
+            document.getElementById("stakeMinesGridMainBody").classList.add("shake-grid-effect");
+            document.body.classList.add("explosion-flash");
+            
+            executeGameOverLoseAction();
+        } else {
+            openedTilesCount++;
+
+            // Сразу сочно звенит мистическое золото (звук плитки стерт!)
+            playZigguratSound('gold_win.mp3');
+
+            tileObj.classList.add("reveal-gem");
+            tileObj.innerHTML = `<img src="textures/gem.png" class="tile-img" onerror="this.replaceWith('👑')">`;
+
+            const previousMultiplier = currentMultiplier;
+            currentMultiplier = calculateMinesFormulaMultiplier(bombsCount, openedTilesCount);
+            
+            const floatingText = document.createElement("div");
+            floatingText.className = "floating-xp-text";
+            floatingText.innerText = `+${currentMultiplier.toFixed(2)}x`;
+            tileObj.appendChild(floatingText);
+
+            document.getElementById("currentWinDisplayInfoLabel").innerText = currentMultiplier.toFixed(2) + "x";
+
+            if (openedTilesCount === (20 - bombsCount)) {
+                executeCashoutWinAction();
+            } else {
+                recalculateMultiplierBarStrip();
+                updateGameStatusInfoLine();
+            }
+        }
+    }
+
+    function executeCashoutWinAction() {
+        const actionBtn = document.getElementById("btnMinesPrimaryStakeAction");
+        actionBtn.disabled = true; 
+
+        if (isExplodedThisRound || !isGameActive) return; 
+
+        isGameActive = false; 
+        playerLastWinningPattern = [...currentRoundClickedTiles];
+
+        // КОНЕЦ РАУНДА (ВЫИГРЫШ): Намертво обрываем трек на кэшауте
+        stopZigguratBackgroundMusic();
+
+        const winAmount = betAmount * currentMultiplier;
+        playerDemoBalance += winAmount;
+        
+        const infoLine = document.getElementById("minesGameStatusInfoLine");
+        infoLine.style.color = "var(--accent-gold)";
+        infoLine.innerText = `🎉 ЗАБРАЛ БОГАТСТВА: +${winAmount.toFixed(2)} TON!`;
+
+        revealEntireBoardEndRound();
+        setTimeout(resetMinesGameBoardToDefault, 1800); 
+    }
+
+    function executeGameOverLoseAction() {
+        const infoLine = document.getElementById("minesGameStatusInfoLine");
+        infoLine.style.color = "var(--accent-red)";
+        infoLine.innerText = "💥 ПРОКЛЯТИЕ ЗИККУРАТА ЗАБРАЛО СТАВКУ!";
+
+        revealEntireBoardEndRound();
+        setTimeout(resetMinesGameBoardToDefault, 2200);
+    }
+
+    function revealEntireBoardEndRound() {
+        const tiles = document.querySelectorAll(".mine-tile");
+        tiles.forEach((tile, i) => {
+            if (tile.classList.contains("reveal-gem") || tile.classList.contains("reveal-bomb")) return;
+            
+            if (boardMatrix[i] === 1) {
+                tile.classList.add("reveal-bomb");
+                tile.innerHTML = `<img src="textures/mine.png" class="tile-img" style="opacity:0.4;" onerror="this.replaceWith('💣')">`;
+            } else {
+                tile.classList.add("reveal-gem");
+                tile.innerHTML = `<img src="textures/gem.png" class="tile-img" style="opacity:0.4;" onerror="this.replaceWith('👑')">`;
+            }
+        });
+    }
+
+    function resetMinesGameBoardToDefault() {
+        isGameActive = false;
+        isExplodedThisRound = false;
+        openedTilesCount = 0;
+        currentMultiplier = 1.00;
+        
+        document.body.classList.remove("explosion-flash");
+        
+        const actionBtn = document.getElementById("btnMinesPrimaryStakeAction");
+        actionBtn.innerText = "Bet";
+        // Возвращаем бесконечный переливающийся градиент жидкой лавы в лобби
+        actionBtn.className = "btn-stake-bet-action gradient-fire-lava";
+        actionBtn.style.boxShadow = "0 4px 15px var(--accent-gold-shadow)";
+        actionBtn.disabled = false; 
+
+        lockInputsControlPanel(false);
+        initStandaloneGridBoard();
+    }
+
+    function lockInputsControlPanel(statusBoolean) {
+        const betInput = document.getElementById("stakeMinesBetInputAmount");
+        if (betInput) betInput.disabled = statusBoolean;
+    }
+
+    function updateScreenBalanceDisplay() {
+        const balanceDisplay = document.getElementById("minesDisplayWalletName");
+        if (balanceDisplay) {
+            balanceDisplay.innerText = "Золотой запас: " + playerDemoBalance.toFixed(2) + " TON";
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initStandaloneGridBoard();
+        startDeluxeLeafEngine(); // Запуск 3D-виляющих ленивых листьев
+    });
+  </script>
+</body>
+</html>
